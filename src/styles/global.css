@@ -210,8 +210,7 @@ h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5em; }
   border-radius: var(--radius-md);
   overflow-x: auto;
   padding: 1.25rem;
-  background: var(--color-surface-lowest) !important;
-  color: var(--color-text-primary);
+  background: #0d1117 !important;
   border: 1px solid var(--color-surface-highest);
 }
 
