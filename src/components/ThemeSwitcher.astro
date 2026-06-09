@@ -1,0 +1,133 @@
+---
+// src/components/ThemeSwitcher.astro — 浅色/深色模式切换器
+// is:inline + 纯 JS：不受 Astro 模块脚本 defer/View Transitions 影响
+---
+
+<div class="theme-switcher" id="theme-switcher">
+  <!-- 太阳图标（当前浅色时显示） -->
+  <button
+    class="switch-btn"
+    id="btn-light"
+    aria-label="切换到深色模式"
+    title="切换到深色模式"
+  >
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </button>
+
+  <!-- 月亮图标（当前深色时显示） -->
+  <button
+    class="switch-btn hidden"
+    id="btn-dark"
+    aria-label="切换到浅色模式"
+    title="切换到浅色模式"
+  >
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+  </button>
+</div>
+
+<style>
+  .theme-switcher {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .switch-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-surface-highest);
+    background: var(--color-surface-raised);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .switch-btn:hover {
+    background: var(--color-surface-high);
+    color: var(--color-text-primary);
+    border-color: oklch(0.70 0.18 195 / 0.40);
+  }
+
+  .switch-btn:active {
+    transform: scale(0.92);
+  }
+
+  .switch-btn.hidden {
+    display: none !important;
+  }
+</style>
+
+<script is:inline>
+  // ====== 主题切换 — 事件委托方案（纯 JS） ======
+  // is:inline = 原样内联到 HTML，不走 Astro 模块脚本系统
+  // 事件委托绑定在 document 上，不受脚本执行时机影响
+
+  (function () {
+    var ROOT = document.documentElement;
+    var STORAGE_KEY = "neo-blog-theme";
+
+    function isDark() {
+      return ROOT.getAttribute("data-theme") === "dark";
+    }
+
+    function applyTheme(dark) {
+      ROOT.setAttribute("data-theme", dark ? "dark" : "light");
+      localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
+      updateButtonVisibility(dark);
+    }
+
+    function updateButtonVisibility(dark) {
+      var btnLight = document.getElementById("btn-light");
+      var btnDark = document.getElementById("btn-dark");
+      if (btnLight) btnLight.classList.toggle("hidden", dark);
+      if (btnDark) btnDark.classList.toggle("hidden", !dark);
+    }
+
+    function toggleTheme() {
+      applyTheme(!isDark());
+    }
+
+    function init() {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === "dark" || saved === "light") {
+        applyTheme(saved === "dark");
+      } else {
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        applyTheme(prefersDark);
+      }
+    }
+
+    // 事件委托：click 绑在 document 上，永远有效
+    document.addEventListener("click", function (e) {
+      var target = e.target;
+      var btn = target.closest("#btn-light, #btn-dark");
+      if (btn) {
+        e.preventDefault();
+        toggleTheme();
+      }
+    });
+
+    // 首次加载初始化
+    init();
+
+    // View Transitions 导航后重新同步按钮状态
+    document.addEventListener("astro:page-load", init);
+  })();
+</script>

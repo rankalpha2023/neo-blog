@@ -1,47 +1,101 @@
 ---
-// Import the global.css file here so that it is included on
-// all pages through the use of the <BaseHead /> component.
-import '../styles/global.css';
+// src/components/BaseHead.astro — SEO 元数据 + Schema.org + View Transitions
+import Seo from "@jdevalk/astro-seo-graph/Seo.astro";
+import { ClientRouter } from "astro:transitions";
 
 interface Props {
-	title: string;
-	description: string;
-	image?: string;
+  title: string;
+  description: string;
+  ogType?: string;
+  ogImage?: string;
+  article?: {
+    publishedTime: Date;
+    modifiedTime?: Date;
+    tags?: string[];
+    author?: string;
+  };
 }
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const {
+  title,
+  description,
+  ogType = "website",
+  ogImage,
+  article,
+} = Astro.props;
 
-const { title, description, image = '/blog-placeholder-1.jpg' } = Astro.props;
+// Schema.org 图谱数据
+const graph = [
+  {
+    "@type": "WebSite",
+    name: "Neo Blog",
+    url: Astro.site,
+    description: "探索 AI 工具与智能实践",
+  },
+  {
+    "@type": "Person",
+    name: "Neo",
+    url: new URL("/about", Astro.site),
+    knowsAbout: [
+      "AI 工具与实践",
+      "LLM 应用开发",
+      "知识管理",
+      "Agent 自动化",
+      "Astro",
+      "Cloudflare",
+    ],
+  },
+];
+
+if (article) {
+  graph.push({
+    "@type": "BlogPosting",
+    headline: title,
+    datePublished: article.publishedTime.toISOString(),
+    dateModified:
+      (article.modifiedTime || article.publishedTime).toISOString(),
+    author: { "@id": "#author" },
+    publisher: { "@id": "#website" },
+    ...(article.tags && { keywords: article.tags.join(", ") }),
+  });
+}
 ---
 
-<!-- Global Metadata -->
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<meta name="generator" content={Astro.generator} />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- Font preloads -->
-<link rel="preload" href="/fonts/atkinson-regular.woff" as="font" type="font/woff" crossorigin />
-<link rel="preload" href="/fonts/atkinson-bold.woff" as="font" type="font/woff" crossorigin />
+<!-- ★ Seo 组件：一行搞定所有 SEO 元素 -->
+<Seo
+  title={title}
+  description={description}
+  canonical={new URL(Astro.url.pathname, Astro.site)}
+  ogType={ogType}
+  ogImage={ogImage || "/og/default.jpg"}
+  ogImageAlt={title}
+  ogImageWidth={1200}
+  ogImageHeight={675}
+  siteName="Neo Blog"
+  twitter={{ card: "summary_large_image" }}
+  article={article}
+  graph={graph}
+  extraLinks={[
+    {
+      rel: "icon",
+      type: "image/svg+xml",
+      href: "/favicon.svg",
+    },
+    {
+      rel: "sitemap",
+      href: "/sitemap-index.xml",
+    },
+    {
+      rel: "alternate",
+      type: "application/rss+xml",
+      href: "/rss.xml",
+      title: "RSS",
+    },
+  ]}
+/>
 
-<!-- Canonical URL -->
-<link rel="canonical" href={canonicalURL} />
-
-<!-- Primary Meta Tags -->
-<title>{title}</title>
-<meta name="title" content={title} />
-<meta name="description" content={description} />
-
-<!-- Open Graph / Facebook -->
-<meta property="og:type" content="website" />
-<meta property="og:url" content={Astro.url} />
-<meta property="og:title" content={title} />
-<meta property="og:description" content={description} />
-<meta property="og:image" content={new URL(image, Astro.url)} />
-
-<!-- Twitter -->
-<meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:url" content={Astro.url} />
-<meta property="twitter:title" content={title} />
-<meta property="twitter:description" content={description} />
-<meta property="twitter:image" content={new URL(image, Astro.url)} />
+<!-- View Transitions：SPA 级页面切换动画（fade 效果） -->
+<ClientRouter transition:name="fade" />

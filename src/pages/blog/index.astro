@@ -1,111 +1,95 @@
 ---
-import BaseHead from '../../components/BaseHead.astro';
-import Header from '../../components/Header.astro';
-import Footer from '../../components/Footer.astro';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../../consts';
-import { getCollection } from 'astro:content';
-import FormattedDate from '../../components/FormattedDate.astro';
+// src/pages/blog/index.astro — 博客列表页（与首页卡片风格一致）
+import BaseHead from "../../components/BaseHead.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import FormattedDate from "../../components/FormattedDate.astro";
+import TagList from "../../components/TagList.astro";
+import { getCollection } from "astro:content";
+import "../../styles/global.css";
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
+const posts = (
+  await getCollection("blog", ({ data }) => !data.draft)
+).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
 
 <!doctype html>
-<html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-		<style>
-			main {
-				width: 960px;
-			}
-			ul {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 2rem;
-				list-style-type: none;
-				margin: 0;
-				padding: 0;
-			}
-			ul li {
-				width: calc(50% - 1rem);
-			}
-			ul li * {
-				text-decoration: none;
-				transition: 0.2s ease;
-			}
-			ul li:first-child {
-				width: 100%;
-				margin-bottom: 1rem;
-				text-align: center;
-			}
-			ul li:first-child img {
-				width: 100%;
-			}
-			ul li:first-child .title {
-				font-size: 2.369rem;
-			}
-			ul li img {
-				margin-bottom: 0.5rem;
-				border-radius: 12px;
-			}
-			ul li a {
-				display: block;
-			}
-			.title {
-				margin: 0;
-				color: rgb(var(--black));
-				line-height: 1;
-			}
-			.date {
-				margin: 0;
-				color: rgb(var(--gray));
-			}
-			ul li a:hover h4,
-			ul li a:hover .date {
-				color: rgb(var(--accent));
-			}
-			ul a:hover img {
-				box-shadow: var(--box-shadow);
-			}
-			@media (max-width: 720px) {
-				ul {
-					gap: 0.5em;
-				}
-				ul li {
-					width: 100%;
-					text-align: center;
-				}
-				ul li:first-child {
-					margin-bottom: 0;
-				}
-				ul li:first-child .title {
-					font-size: 1.563em;
-				}
-			}
-		</style>
-	</head>
-	<body>
-		<Header />
-		<main>
-			<section>
-				<ul>
-					{
-						posts.map((post) => (
-							<li>
-								<a href={`/blog/${post.id}/`}>
-									<img width={720} height={360} src={post.data.heroImage} alt="" />
-									<h4 class="title">{post.data.title}</h4>
-									<p class="date">
-										<FormattedDate date={post.data.pubDate} />
-									</p>
-								</a>
-							</li>
-						))
-					}
-				</ul>
-			</section>
-		</main>
-		<Footer />
-	</body>
+<html lang="zh-CN">
+  <head>
+    <BaseHead
+      title="全部文章 — Neo Blog"
+      description="Neo Blog 全部文章列表，涵盖 AI 编程助手、Agent 自动化、LLM 应用开发、知识管理、多模态应用等主题"
+    />
+  </head>
+  <body class="bg-[var(--color-surface-base)] text-[var(--color-text-primary)]">
+    <Header />
+
+    <main class="mx-auto max-w-3xl px-4 py-12">
+      <h1 class="text-3xl font-extrabold mb-8 tracking-tight flex items-center gap-3">
+        <span class="inline-block w-1.5 h-8 rounded-full bg-[var(--color-primary)]"></span>
+        全部文章
+      </h1>
+
+      {posts.length === 0 ? (
+        <div class="text-center py-16 text-[var(--color-text-muted)] border border-dashed border-[var(--color-surface-highest)] rounded-xl bg-[var(--color-surface-low)]">
+          <p class="text-lg font-medium">还没有文章</p>
+          <p class="text-sm mt-2 opacity-70">在 src/content/blog/ 下创建 .md 文件即可</p>
+        </div>
+      ) : (
+        <div class="space-y-5">
+          {posts.map((post) => (
+            <!-- 卡片布局：与首页完全一致 -->
+            <article
+              class="group relative pl-5 pr-5 pt-5 pb-5 rounded-xl bg-[var(--color-surface-raised)] hover:shadow-lg transition-all duration-200 overflow-hidden"
+              style="border-left: 3px solid var(--color-tag-ai);"
+            >
+              {/* 左侧彩色条动画 */}
+              <span
+                class="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-accent)] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                style="width: 3px; margin-left: -3px;"
+              ></span>
+
+              {/* 标签区 */}
+              {post.data.tags.length > 0 && (
+                <div class="mb-2.5">
+                  <TagList tags={post.data.tags} size="sm" />
+                </div>
+              )}
+
+              {/* 标题 */}
+              <a
+                href={`/blog/${post.id}`}
+                class="text-lg md:text-xl font-bold block mb-2 group-hover:text-[var(--color-primary)] transition-colors duration-200"
+              >
+                {post.data.title}
+              </a>
+
+              {/* 描述 */}
+              {post.data.description && (
+                <p class="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3 line-clamp-2">
+                  {post.data.description}
+                </p>
+              )}
+
+              {/* 底部元信息 */}
+              <div class="flex items-center justify-between text-xs text-[var(--color-text-muted)] mt-auto pt-1">
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <FormattedDate date={post.data.pubDate} />
+                </div>
+                {post.data.author && (
+                  <span class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    {post.data.author}
+                  </span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </main>
+
+    <Footer />
+  </body>
 </html>

@@ -1,0 +1,23 @@
+---
+// src/components/CTABox.astro — CTA 转化区
+interface Props {
+  text?: string;
+  link?: string;
+  buttonText?: string;
+  class?: string;
+}
+
+const {
+  text = "想了解更多 GEO 方法论？",
+  link = "/blog",
+  buttonText = "查看更多文章 →",
+  class: className,
+} = Astro.props;
+---
+
+<div class:list={["p-6 border-l-4 border-[var(--color-primary)] bg-blue-50 dark:bg-blue-950 rounded-r-xl my-8", className]}>
+  <h3 class="text-lg font-bold mb-2">🚀 {text}</h3>
+  <a href={link} class="inline-block mt-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] transition-colors">
+    {buttonText}
+  </a>
+</div>

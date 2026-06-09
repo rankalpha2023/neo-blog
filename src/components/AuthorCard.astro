@@ -1,0 +1,20 @@
+---
+// src/components/AuthorCard.astro — 作者信息卡（E-E-A-T 信号）
+interface Props {
+  name?: string;
+  bio?: string;
+  class?: string;
+}
+
+const { name = "Neo", bio = "GEO 方法论实践者，探索 AI 搜索引擎优化的前沿", class: className } = Astro.props;
+---
+
+<div class:list={["flex items-center gap-4 p-6 bg-[var(--color-bg-alt)] rounded-xl", className]}>
+  <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white text-xl font-bold">
+    {name.charAt(0)}
+  </div>
+  <div>
+    <p class="font-semibold text-lg">{name}</p>
+    <p class="text-sm text-[var(--color-text-muted)]">{bio}</p>
+  </div>
+</div>

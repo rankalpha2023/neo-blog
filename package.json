@@ -12,11 +12,14 @@
     "publish": true
   },
   "dependencies": {
-    "@astrojs/cloudflare": "12.6.12",
-    "@astrojs/mdx": "4.3.13",
-    "@astrojs/rss": "4.0.14",
-    "@astrojs/sitemap": "3.6.1",
-    "astro": "5.16.9",
+    "@astrojs/cloudflare": "^13.5.5",
+    "@astrojs/mdx": "^6.0.1",
+    "@astrojs/rss": "^4.0.18",
+    "@astrojs/sitemap": "^3.7.3",
+    "@jdevalk/astro-seo-graph": "^2.0.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "astro": "^6.4.2",
+    "tailwindcss": "^4.3.0",
     "typescript": "5.9.3"
   },
   "devDependencies": {
@@ -31,10 +34,12 @@
     "astro": "astro",
     "build": "astro build",
     "cf-typegen": "wrangler types",
-    "check": "astro build && tsc && wrangler deploy --dry-run",
-    "deploy": "wrangler deploy",
+    "check": "astro build && tsc",
+    "deploy": "wrangler pages deploy dist/",
     "dev": "astro dev",
-    "preview": "astro build && wrangler dev"
+    "preview": "astro build && npx wrangler pages dev dist/",
+    "pages:deploy": "wrangler pages deploy dist/",
+    "pages:preview": "wrangler pages dev dist/"
   },
   "type": "module"
 }

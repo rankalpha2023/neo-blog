@@ -1,0 +1,15 @@
+---
+// src/components/CaseStudy.astro — 案例研究卡片
+interface Props {
+  title: string;
+  data: string;
+  class?: string;
+}
+
+const { title, data, class: className } = Astro.props;
+---
+
+<div class:list={["callout my-6", className]}>
+  <p class="font-semibold text-[var(--color-primary)] mb-1">📊 {title}</p>
+  <p class="text-sm leading-relaxed" set:html={data} />
+</div>

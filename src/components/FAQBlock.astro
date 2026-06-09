@@ -1,0 +1,31 @@
+---
+// src/components/FAQBlock.astro — FAQ 折叠区块
+interface FAQItem {
+  q: string;
+  a: string;
+}
+
+interface Props {
+  items: FAQItem[];
+  class?: string;
+}
+
+const { items, class: className } = Astro.props;
+---
+
+<div class:list={["my-8", className]}>
+  <h3 class="text-xl font-bold mb-4">❓ 常见问题</h3>
+  <div class="space-y-2">
+    {items.map((item) => (
+      <details class="group border border-[var(--color-border)] rounded-lg overflow-hidden">
+        <summary class="px-4 py-3 cursor-pointer font-medium hover:bg-[var(--color-bg-alt)] transition-colors list-none flex justify-between items-center">
+          <span>{item.q}</span>
+          <span class="text-[var(--color-text-muted)] group-open:rotate-180 transition-transform text-xs">▼</span>
+        </summary>
+        <div class="px-4 pb-3 text-[var(--color-text-muted)] border-t border-[var(--color-border)] text-sm leading-relaxed">
+          <Fragment set:html={item.a} />
+        </div>
+      </details>
+    ))}
+  </div>
+</div>

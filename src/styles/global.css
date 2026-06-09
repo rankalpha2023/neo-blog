@@ -1,155 +1,351 @@
-/*
-  The CSS in this style tag is based off of Bear Blog's default CSS.
-  https://github.com/HermanMartinus/bearblog/blob/297026a877bc2ab2b3bdfbd6b9f7961c350917dd/templates/styles/blog/default.css
-  License MIT: https://github.com/HermanMartinus/bearblog/blob/master/LICENSE.md
- */
+/* src/styles/global.css — 「柠檬海盐」配色 + 手动主题切换 */
+@import "tailwindcss";
 
-:root {
-	--accent: #2337ff;
-	--accent-dark: #000d8a;
-	--black: 15, 18, 25;
-	--gray: 96, 115, 159;
-	--gray-light: 229, 233, 240;
-	--gray-dark: 34, 41, 57;
-	--gray-gradient: rgba(var(--gray-light), 50%), #fff;
-	--box-shadow:
-		0 2px 6px rgba(var(--gray), 25%), 0 8px 24px rgba(var(--gray), 33%),
-		0 16px 32px rgba(var(--gray), 33%);
+/* ============================================================
+   柠檬海盐（Lemon Sea Salt）— 明亮、清爽、有活力
+   主色：清透蓝绿（Aqua Cyan）
+   辅色：明亮柠檬黄（Sunny Yellow）
+   背景：奶白暖调（Cream Ivory）
+   ============================================================ */
+
+@theme {
+  /* ===== 主色调：清透蓝绿 ===== */
+  --color-primary: oklch(0.70 0.18 195);
+  --color-primary-light: oklch(0.82 0.14 195);
+  --color-primary-dark: oklch(0.55 0.20 195);
+  --color-primary-glow: oklch(0.70 0.18 195 / 0.20);
+
+  /* ===== 辅色：明亮柠檬黄 ===== */
+  --color-accent: oklch(0.82 0.20 85);
+  --color-accent-light: oklch(0.92 0.12 85);
+  --color-accent-dark: oklch(0.72 0.22 85);
+
+  /* ===== 表面层级（浅色模式 — 明亮通透）===== */
+  --color-surface-lowest: oklch(0.99 0.008 80);
+  --color-surface-low: oklch(0.97 0.010 85);
+  --color-surface-base: oklch(0.94 0.012 85);
+  --color-surface-raised: oklch(0.90 0.015 85);
+  --color-surface-high: oklch(0.82 0.018 85);
+  --color-surface-highest: oklch(0.96 0.015 85);
+
+  /* ===== 文字层级（深炭灰而非纯黑）===== */
+  --color-text-primary: oklch(0.22 0.03 60);
+  --color-text-secondary: oklch(0.40 0.04 60);
+  --color-text-muted: oklch(0.60 0.04 60);
+  --color-text-on-primary: oklch(0.98 0.005 195);
+
+  /* ===== 功能色 ===== */
+  --color-success: oklch(0.72 0.18 155);
+  --color-warning: oklch(0.78 0.16 75);
+  --color-error: oklch(0.62 0.22 25);
+
+  /* ===== 分类标签色 ===== */
+  --color-tag-ai: oklch(0.68 0.18 195);
+  --color-tag-tool: oklch(0.72 0.20 250);
+  --color-tag-seo: oklch(0.72 0.17 145);
+  --color-tag-practice: oklch(0.70 0.19 55);
+
+  /* ===== 字体 ===== */
+  --font-heading: "Bricolage Grotesque", "Noto Sans SC", sans-serif;
+  --font-body: -apple-system, "PingFang SC", "Microsoft YaHei",
+    "Hiragino Sans GB", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+
+  /* ===== 动效令牌 ===== */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* ===== 圆角 ===== */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
 }
-@font-face {
-	font-family: "Atkinson";
-	src: url("/fonts/atkinson-regular.woff") format("woff");
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
+
+/* ============================================================
+   暗色模式 — 通过 [data-theme="dark"] 切换，不依赖系统设置
+   ============================================================ */
+[data-theme="dark"] {
+  --color-surface-lowest: oklch(0.15 0.03 230);
+  --color-surface-low: oklch(0.20 0.035 230);
+  --color-surface-base: oklch(0.26 0.04 230);
+  --color-surface-raised: oklch(0.32 0.045 230);
+  --color-surface-high: oklch(0.40 0.05 230);
+  --color-surface-highest: oklch(0.45 0.055 230);
+
+  --color-text-primary: oklch(0.92 0.01 80);
+  --color-text-secondary: oklch(0.75 0.02 80);
+  --color-text-muted: oklch(0.55 0.03 80);
+
+  --color-primary: oklch(0.75 0.16 195);
+  --color-primary-light: oklch(0.82 0.12 195);
+  --color-primary-dark: oklch(0.65 0.20 195);
+  --color-accent: oklch(0.85 0.18 85);
+  --color-accent-light: oklch(0.93 0.10 85);
+
+  --color-success: oklch(0.68 0.15 155);
+  --color-warning: oklch(0.75 0.14 75);
+  --color-error: oklch(0.65 0.18 25);
+
+  --color-tag-ai: oklch(0.72 0.16 195);
+  --color-tag-tool: oklch(0.75 0.18 250);
+  --color-tag-seo: oklch(0.74 0.15 145);
+  --color-tag-practice: oklch(0.72 0.17 55);
 }
-@font-face {
-	font-family: "Atkinson";
-	src: url("/fonts/atkinson-bold.woff") format("woff");
-	font-weight: 700;
-	font-style: normal;
-	font-display: swap;
+
+/* ============================================================
+   全局基础
+   ============================================================ */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
+
 body {
-	font-family: "Atkinson", sans-serif;
-	margin: 0;
-	padding: 0;
-	text-align: left;
-	background: linear-gradient(var(--gray-gradient)) no-repeat;
-	background-size: 100% 600px;
-	word-wrap: break-word;
-	overflow-wrap: break-word;
-	color: rgb(var(--gray-dark));
-	font-size: 20px;
-	line-height: 1.7;
-}
-main {
-	width: 720px;
-	max-width: calc(100% - 2em);
-	margin: auto;
-	padding: 3em 1em;
-}
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-	margin: 0 0 0.5rem 0;
-	color: rgb(var(--black));
-	line-height: 1.2;
-}
-h1 {
-	font-size: 3.052em;
-}
-h2 {
-	font-size: 2.441em;
-}
-h3 {
-	font-size: 1.953em;
-}
-h4 {
-	font-size: 1.563em;
-}
-h5 {
-	font-size: 1.25em;
-}
-strong,
-b {
-	font-weight: 700;
-}
-a {
-	color: var(--accent);
-}
-a:hover {
-	color: var(--accent);
-}
-p {
-	margin-bottom: 1em;
-}
-.prose p {
-	margin-bottom: 2em;
-}
-textarea {
-	width: 100%;
-	font-size: 16px;
-}
-input {
-	font-size: 16px;
-}
-table {
-	width: 100%;
-}
-img {
-	max-width: 100%;
-	height: auto;
-	border-radius: 8px;
-}
-code {
-	padding: 2px 5px;
-	background-color: rgb(var(--gray-light));
-	border-radius: 2px;
-}
-pre {
-	padding: 1.5em;
-	border-radius: 8px;
-}
-pre > code {
-	all: unset;
-}
-blockquote {
-	border-left: 4px solid var(--accent);
-	padding: 0 0 0 20px;
-	margin: 0px;
-	font-size: 1.333em;
-}
-hr {
-	border: none;
-	border-top: 1px solid rgb(var(--gray-light));
-}
-@media (max-width: 720px) {
-	body {
-		font-size: 18px;
-	}
-	main {
-		padding: 1em;
-	}
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--color-text-primary);
+  background: var(--color-surface-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: color var(--transition-normal),
+              background var(--transition-normal);
 }
 
-.sr-only {
-	border: 0;
-	padding: 0;
-	margin: 0;
-	position: absolute !important;
-	height: 1px;
-	width: 1px;
-	overflow: hidden;
-	/* IE6, IE7 - a 0 height clip, off to the bottom right of the visible 1px box */
-	clip: rect(1px 1px 1px 1px);
-	/* maybe deprecated but we need to support legacy browsers */
-	clip: rect(1px, 1px, 1px, 1px);
-	/* modern browsers, clip-path works inwards from each corner */
-	clip-path: inset(50%);
-	/* added line to stop words getting smushed together (as they go onto separate lines and some screen readers do not understand line feeds as a space */
-	white-space: nowrap;
+/* ============================================================
+   排版 — Typography-first
+   ============================================================ */
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+}
+
+h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2em; }
+h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5em; }
+
+/* Goldie 风格：每句一行效果 */
+.prose p {
+  margin-bottom: 0.65em;
+}
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  margin-bottom: 0.8em;
+}
+
+/* 正文最佳阅读宽度 */
+.prose {
+  max-width: 65ch;
+}
+
+/* ============================================================
+   Callout 卡片
+   ============================================================ */
+
+.callout {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--color-primary);
+  background: oklch(0.70 0.18 195 / 0.06);
+  margin: 1.5rem 0;
+}
+
+[data-theme="dark"] .callout {
+  background: oklch(0.70 0.18 195 / 0.12);
+}
+
+/* ============================================================
+   表格 — 斑马纹 + 圆角
+   ============================================================ */
+
+.prose table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-surface-highest);
+}
+
+.prose th,
+.prose td {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-surface-highest);
+}
+
+.prose th {
+  background: var(--color-surface-raised);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.prose tr:last-child td {
+  border-bottom: none;
+}
+
+.prose tr:nth-child(even) td {
+  background: oklch(0.70 0.18 195 / 0.03);
+}
+
+[data-theme="dark"] .prose tr:nth-child(even) td {
+  background: oklch(0.70 0.18 195 / 0.06);
+}
+
+/* ============================================================
+   代码块
+   ============================================================ */
+
+.prose pre {
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  padding: 1.25rem;
+  background: var(--color-surface-lowest) !important;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-surface-highest);
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.prose :not(pre) > code {
+  background: oklch(0.70 0.18 195 / 0.10);
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+[data-theme="dark"] .prose :not(pre) > code {
+  background: oklch(0.70 0.18 195 / 0.16);
+}
+
+/* ============================================================
+   链接
+   ============================================================ */
+
+.prose a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: oklch(0.70 0.18 195 / 0.3);
+  transition: color var(--transition-fast),
+              text-decoration-color var(--transition-fast);
+}
+
+.prose a:hover {
+  color: var(--color-primary-dark);
+  text-decoration-color: var(--color-primary);
+}
+
+/* ============================================================
+   图片
+   ============================================================ */
+
+.prose img {
+  border-radius: var(--radius-md);
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   引用块
+   ============================================================ */
+
+.prose blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 1rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  background: oklch(0.70 0.18 195 / 0.03);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: 1.5rem 0;
+}
+
+/* ============================================================
+   列表
+   ============================================================ */
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin-bottom: 0.25em;
+}
+
+.prose li::marker {
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   分隔线 — 渐变
+   ============================================================ */
+
+.prose hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-primary-glow),
+    transparent
+  );
+  margin: 2.5rem 0;
+}
+
+/* ============================================================
+   选择文字高亮
+   ============================================================ */
+
+::selection {
+  background: oklch(0.82 0.20 85 / 0.3);
+  color: inherit;
+}
+
+/* ============================================================
+   焦点环
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   滚动条美化（仅 WebKit）
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-highest);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }

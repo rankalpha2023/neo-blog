@@ -1,85 +1,105 @@
 ---
-import type { CollectionEntry } from 'astro:content';
-import BaseHead from '../components/BaseHead.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import FormattedDate from '../components/FormattedDate.astro';
+// src/layouts/BlogPost.astro — 文章专用布局「柠檬海盐」版
+import type { CollectionEntry } from "astro:content";
+import BaseHead from "../components/BaseHead.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import AuthorCard from "../components/AuthorCard.astro";
+import CTABox from "../components/CTABox.astro";
+import FAQBlock from "../components/FAQBlock.astro";
+import TagList from "../components/TagList.astro";
+import FormattedDate from "../components/FormattedDate.astro";
+import "../styles/global.css";
 
-type Props = CollectionEntry<'blog'>['data'];
+type Props = CollectionEntry<"blog">["data"];
 
-const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, tags = [], author } = Astro.props;
 ---
 
-<html lang="en">
-	<head>
-		<BaseHead title={title} description={description} />
-		<style>
-			main {
-				width: calc(100% - 2em);
-				max-width: 100%;
-				margin: 0;
-			}
-			.hero-image {
-				width: 100%;
-			}
-			.hero-image img {
-				display: block;
-				margin: 0 auto;
-				border-radius: 12px;
-				box-shadow: var(--box-shadow);
-			}
-			.prose {
-				width: 720px;
-				max-width: calc(100% - 2em);
-				margin: auto;
-				padding: 1em;
-				color: rgb(var(--gray-dark));
-			}
-			.title {
-				margin-bottom: 1em;
-				padding: 1em 0;
-				text-align: center;
-				line-height: 1;
-			}
-			.title h1 {
-				margin: 0 0 0.5em 0;
-			}
-			.date {
-				margin-bottom: 0.5em;
-				color: rgb(var(--gray));
-			}
-			.last-updated-on {
-				font-style: italic;
-			}
-		</style>
-	</head>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <BaseHead
+      title={title}
+      description={description}
+      ogType="article"
+      ogImage={heroImage}
+      article={{
+        publishedTime: pubDate,
+        modifiedTime: updatedDate,
+        tags,
+        author,
+      }}
+    />
+  </head>
+  <body class="bg-[var(--color-surface-base)] text-[var(--color-text-primary)]">
+    <Header />
 
-	<body>
-		<Header />
-		<main>
-			<article>
-				<div class="hero-image">
-					{heroImage && <img width={1020} height={510} src={heroImage} alt="" />}
-				</div>
-				<div class="prose">
-					<div class="title">
-						<div class="date">
-							<FormattedDate date={pubDate} />
-							{
-								updatedDate && (
-									<div class="last-updated-on">
-										Last updated on <FormattedDate date={updatedDate} />
-									</div>
-								)
-							}
-						</div>
-						<h1>{title}</h1>
-						<hr />
-					</div>
-					<slot />
-				</div>
-			</article>
-		</main>
-		<Footer />
-	</body>
+    <main class="mx-auto max-w-3xl px-4 py-8">
+      <article class="post-article">
+        <!-- 文章头部 -->
+        <header class="mb-10">
+          <!-- 标签 -->
+          {tags.length > 0 && (
+            <div class="mb-4">
+              <TagList tags={tags} size="lg" />
+            </div>
+          )}
+
+          <!-- H1 标题 -->
+          <h1 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight tracking-tight">
+            {title}
+          </h1>
+
+          <!-- 元信息行 -->
+          <div class="flex items-center gap-4 text-sm text-[var(--color-text-muted)] pb-4 border-b border-[var(--color-surface-highest)]">
+            <div class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              <FormattedDate date={pubDate} />
+            </div>
+            {updatedDate && (
+              <span>· 更新于 <FormattedDate date={updatedDate} /></span>
+            )}
+            {author && (
+              <span class="flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                {author}
+              </span>
+            )}
+          </div>
+
+          <!-- 封面图 -->
+          {heroImage && (
+            <div class="mt-6 rounded-xl overflow-hidden border border-[var(--color-surface-highest)]">
+              <img
+                src={heroImage}
+                alt={title}
+                loading="eager"
+                decoding="async"
+                class="w-full h-auto"
+              />
+            </div>
+          )}
+        </header>
+
+        <!-- 正文内容（Markdown 渲染结果注入）-->
+        <div class="prose max-w-none mt-8">
+          <slot />
+        </div>
+
+        <!-- 作者卡（E-E-A-T）-->
+        <AuthorCard name={author} class="mt-12" />
+
+        <!-- CTA 转化区 -->
+        <CTABox class="mt-12" />
+
+        <!-- 底部标签 -->
+        <div class="mt-12 pt-8 border-t border-[var(--color-surface-highest)]">
+          <TagList tags={tags} size="lg" />
+        </div>
+      </article>
+    </main>
+
+    <Footer />
+  </body>
 </html>

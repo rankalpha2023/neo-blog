@@ -1,0 +1,89 @@
+---
+// src/components/TagList.astro — 标签药丸「柠檬海盐」版
+interface Props {
+  tags: string[];
+  size?: "sm" | "lg";
+  class?: string;
+}
+
+const { tags, size = "sm", class: className } = Astro.props;
+
+// 根据标签名映射到不同颜色类名
+function tagClass(tag: string): string {
+  const t = tag.toLowerCase();
+  if (t.includes("ai") || t.includes("llm") || t.includes("模型") || t.includes("智能")) return "tag-ai";
+  if (t.includes("tool") || t.includes("工具") || t.includes("astro") || t.includes("框架")) return "tag-tool";
+  if (t.includes("seo") || t.includes("优化") || t.includes("搜索")) return "tag-seo";
+  if (t.includes("practice") || t.includes("实践") || t.includes("建站")) return "tag-practice";
+  return "tag-default";
+}
+---
+
+{tags.length > 0 && (
+  <div class:list={["flex flex-wrap gap-1.5", className]}>
+    {tags.map((tag) => (
+      <a
+        href={`/blog?tag=${tag}`}
+        class:list={[
+          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-200",
+          size === "lg" ? "px-4 py-1.5 text-sm" : "",
+          tagClass(tag),
+        ]}
+      >
+        #{tag}
+      </a>
+    ))}
+  </div>
+)}
+
+<style>
+  .tag-ai {
+    background: oklch(0.68 0.18 195 / 0.12);
+    color: oklch(0.55 0.20 195);
+    border: 1px solid oklch(0.68 0.18 195 / 0.25);
+  }
+  .tag-ai:hover {
+    background: oklch(0.68 0.18 195 / 0.20);
+    color: oklch(0.50 0.20 195);
+    border-color: oklch(0.68 0.18 195 / 0.40);
+  }
+  .tag-tool {
+    background: oklch(0.72 0.20 250 / 0.10);
+    color: oklch(0.55 0.22 250);
+    border: 1px solid oklch(0.72 0.20 250 / 0.22);
+  }
+  .tag-tool:hover {
+    background: oklch(0.72 0.20 250 / 0.18);
+    color: oklch(0.48 0.24 250);
+    border-color: oklch(0.72 0.20 250 / 0.35);
+  }
+  .tag-seo {
+    background: oklch(0.72 0.17 145 / 0.11);
+    color: oklch(0.52 0.19 145);
+    border: 1px solid oklch(0.72 0.17 145 / 0.23);
+  }
+  .tag-seo:hover {
+    background: oklch(0.72 0.17 145 / 0.19);
+    color: oklch(0.46 0.21 145);
+    border-color: oklch(0.72 0.17 145 / 0.36);
+  }
+  .tag-practice {
+    background: oklch(0.70 0.19 55 / 0.11);
+    color: oklch(0.52 0.21 55);
+    border: 1px solid oklch(0.70 0.19 55 / 0.23);
+  }
+  .tag-practice:hover {
+    background: oklch(0.70 0.19 55 / 0.19);
+    color: oklch(0.45 0.23 55);
+    border-color: oklch(0.70 0.19 55 / 0.36);
+  }
+  .tag-default {
+    background: oklch(0.70 0.18 195 / 0.08);
+    color: var(--color-primary-dark);
+    border: 1px solid oklch(0.70 0.18 195 / 0.18);
+  }
+  .tag-default:hover {
+    background: oklch(0.70 0.18 195 / 0.15);
+    border-color: oklch(0.70 0.18 195 / 0.30);
+  }
+</style>
