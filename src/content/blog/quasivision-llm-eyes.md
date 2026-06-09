@@ -1,198 +1,145 @@
 ---
-title: "不用 VLM 也能看懂屏幕：quasivision 的确定性视觉管线是怎么工作的"
-description: "翻开 quasivision 的源码才发现，这个 Rust 项目做了一件反直觉的事——在 2026 年用几何规则做 UI 元素分类，而不是上 VLM。本文从管线代码入手，拆解它为什么选择确定性方案，以及这对 AI Agent 意味着什么。"
+title: "2026 年还在用规则做视觉分类——quasivision 的选择说明了什么"
+description: "一个只有 22 次 commit 的 Rust 项目，走了一条与 VLM 完全相反的路：不用大模型做 UI 分类，用几何规则；不做理解，做提取。本文从项目定位、管线设计、成本结构三个层面拆解它背后那个被忽视的需求——LLM 不需要看见，它只需要看得见的东西被结构化。"
 pubDate: 2026-06-09
 tags: ["AI", "Rust", "计算机视觉", "Agent", "开源"]
 draft: false
 category: "engineering"
 ---
 
-## 只有 7 个模型文件，没有一个是大模型
+## 反直觉的开局
 
-先看一眼 `download.rs` 里的常量：
+2026 年，你随手截一张图扔给 ChatGPT，它就能告诉你上面有什么文字、哪些是按钮、这个界面该怎么操作。VLM 的"视力"已经好到让人忘了它本质上是在猜。
 
-```rust
-const MODEL_FILES: &[&str] = &[
-    "ocr-models/ppocrv5_mobile_det.onnx",
-    "ocr-models/ppocrv5_mobile_rec.onnx",
-    "ocr-models/ppocrv5_dict.txt",
-    "icon-classifier/icon_classifier.onnx",
-    "icon-classifier/labels.json",
-    "object-detection/yoloe-26n-seg.onnx",
-    "object-detection/yoloe-26n_classes.txt",
-];
-```
+就在所有人都往上走——更大模型、更强推理、更通用的视觉理解——[quasivision](https://github.com/WeiChens/quasivision) 往下走了。它的 UI 分类器不是 VLM，而是一组硬编码的几何规则：宽度超过画面一半就是 Block，边界框小于 48 像素且接近方形就是 Icon，高度 20-80 像素配宽高比 0.5-3.0 就是 Button。全是 if-else。
 
-这就是 [quasivision](https://github.com/WeiChens/quasivision) 全部的模型依赖——两个 PaddleOCR 的 ONNX 文件做文字识别，一个 11MB 的 YOLOE-26n 做物体检测，一个图标分类器，加上对应的字典和标签文件。加起来不到 20MB。没有 LLM，没有 VLM，没有 Transformer。
-
-在 2026 年，一个号称能做"视觉理解"的工具用 ONNX 小模型而非调用 GPT-4V，这本身就值得深究。
+这件事乍看之下像是退步。但如果退一步想：在什么情况下，确定性规则比概率推理更好用？
 
 ---
 
-## 管线是 8 步，核心分类靠 if-else
+## 三条线索
 
-读 `main.rs` 里的 `run_pipeline` 函数，骨架非常清晰：
+quasivision 的整个设计可以从三条线索理解，这三条线索互相关联，指向同一个结论。
+
+### 线索一：成本和延迟
+
+用 VLM 做一次截图分析，假设用的是 GPT-4V，一张 1080p 截图大约消耗 800-1500 个 image tokens，加上 prompt 和 response，单次调用成本在 $0.02-0.05 之间。延迟 3-8 秒。
+
+假设一个桌面 Agent 以每 2 秒一帧的速度观察屏幕然后做决策，一小时就是 1800 帧。每帧走一次 VLM？成本 $36-90，延迟累加后 Agent 的反应速度比人还慢。
+
+quasivision 方案：每帧走本地管线，主线程 300ms 内完成 UI 检测，OCR 和物体检测在后台并行。零 API 成本。Agent 仍然需要 LLM 来推理和决策，但 LLM 收到的输入不再是 150KB 的 JPG，而是一段 800 字节的结构化文本：
 
 ```
-Step 1    → 读图片
-Step 2-4  → 组件检测 + 规则分类（主线程）
-Step 5    → OCR（后台线程，与 2-4 并行）
-Step 6    → 合并组件 + 文本 → Element 列表
-Step 6b   → 视觉重要性计算
-Step 6c   → Icon 含义识别
-Step 6d   → 物体检测（后台线程，等待完成）
-Step 8    → 输出 JSON/Tree/可视化图
+Root (1280×800)
+├── Block: 导航栏
+│   ├── Text: "首页"
+│   └── Button: "登录"
+├── Block: 搜索结果
+│   ├── Block: 结果项1
+│   │   ├── Text: "quasivision：给 LLM 装上一双廉价的眼睛"
+│   │   └── Text: "基于 Rust 的伪视觉理解工具..."
+│   └── Block: 结果项2
+...
 ```
 
-有意思的点在 Step 2-4：组件检测的产出不是"这个东西有 87% 概率是按钮"，而是先通过连通域分析（CCL）和矩形检测找到所有候选区域，然后**用纯几何规则做分类**。
+LLM 不需要"看见"屏幕。它读这段文本就够了。视觉感知被从推理链中剥离出来，变成了一个前置步骤——廉价、快速、零信息的确定性提取。
 
-打开 `detection/classification.rs`，核心函数 `classify_by_geometry` 就是一个大的 if-else 链：
+### 线索二：确定性的价值
 
-```rust
-pub fn classify_by_geometry(comps: &mut [Component], img_shape: (u32, u32)) {
-    for comp in comps.iter_mut() {
-        if comp.category != "Compo" { continue; }
+VLM 分析同一张截图，两次给出的坐标可能差几个像素，描述方式可能不同，甚至可能遗漏元素。对大多数聊天场景，这完全没问题。但如果你在写一个 UI 自动化脚本——"点这个按钮，坐标 [x,y]"，差一个像素可能就点不到。
 
-        let w = comp.bbox.width() as f64;
-        let h = comp.bbox.height() as f64;
-        let area_ratio = comp.bbox.area() as f64 / img_area;
-        let ratio = w / h;
+quasivision 的连通域分析加几何规则分类，每次运行对同一张输入产生完全相同的输出。这是确定性管线的核心优势：**不是"我猜这是按钮"，而是"检测到一个边界框满足 Button 的几何条件，坐标就是这些"**。
 
-        // Image: 面积 >8%，宽高比 0.3~5.0
-        if area_ratio > 0.08 && (0.3..=5.0).contains(&ratio) {
-            comp.category = "Image"; continue;
-        }
-        // Block: 宽度或高度超过画面一半
-        if (w / img_w > 0.5 && h / img_h > 0.03)
-            || (h / img_h > 0.5 && w / img_w > 0.03) {
-            comp.category = "Block"; continue;
-        }
-        // Icon: ≤48px 方形
-        if (0.7..=1.4).contains(&ratio) && h <= 48.0 && w <= 48.0 {
-            comp.category = "Icon"; continue;
-        }
-        // Button: 20-80px 高, 20-200px 宽, 宽高比 0.5~3.0
-        if (0.5..=3.0).contains(&ratio) && (20.0..=80.0).contains(&h)
-            && (20.0..=200.0).contains(&w) {
-            comp.category = "Button"; continue;
-        }
-        // Text: 高度 <2.5% 画面高 + 极宽
-        if h / img_h < 0.025 && ratio > 3.0 {
-            comp.category = "Text"; continue;
-        }
-    }
-}
-```
+这种确定性对三类场景尤其重要：
 
-**全是硬编码阈值。** 面积占比 0.08 是 Image，边界框 48px 以下方形是 Icon，高度 20-80px 配宽高比 0.5~3.0 是 Button。没有任何机器学习参与这一步。
+1. **自动化测试**：需要断言"页面上有 3 个 Button、1 个 Input"，每次 CI 跑出来的结果必须一致
+2. **Agent 工具链**：Tool 的返回值必须可靠，LLM 本身已经很能"猜"了，工具层不该再引入不确定性
+3. **批量处理**：1000 张截图做 OCR，每张结果应该只取决于图片本身，不取决于模型今天的状态
 
-这在 2026 年看起来像是一种奇怪的返祖——但仔细想，它提供了一个 VLM 永远给不了的东西：**确定性**。同样的输入永远输出同样的结果。截图里的按钮今天被检测为 Button，明天也是；坐标 [100,200,300,250] 每次都是一样的。而 VLM 可能在两个 session 里对同一个按钮给出两种描述。
+### 线索三：集成的便利性
+
+一个 Python 视觉工具被集成到系统层，需要 Python 运行时、CUDA 或 Metal、正确处理各种依赖冲突。一个纯 Rust 工具是一个静态链接的二进制文件，拷贝过去就能跑。集成成本为零。
+
+这是 quasivision 选择 Rust 的真正原因——不是为了比 Python 快几毫秒，而是为了**作为一块砖被塞进任何项目中**。做成 MCP Tool、嵌入桌面 Agent、放进 CI pipeline、打包成 npm 命令行工具——都只需要一个二进制文件。
 
 ---
 
-## merge 阶段：用 Text 覆盖 Comp
+## 8 步管线的设计取舍
 
-看 `merger.rs` 里的 `merge` 函数，它的逻辑是先转 Component 为 Element，再把 OCR 识别的文字合并进去。合并过程中有几个值得注意的设计：
+翻开 `main.rs` 的核心循环，8 个步骤中埋着几个值得琢磨的设计选择：
 
-**有意义长文本绕过过滤。** `refine_texts` 对文本做了多层过滤：空内容删掉，纯标点删掉，但有一个保护条件——"长度 >5 字符且宽度大于 2 倍高度的文本"直接放行，不受高度比限制。这解决了一个实际问题：标题和标语通常很长但字号不大，如果按高度过滤会误杀。
+**OCR 和物体检测放在后台线程，不阻塞主流程。** 因为 OCR（PaddleOCR ONNX）和 YOLOE-26n 推理是耗时最长的步骤，但它们对 UI 组件检测没有依赖——你在识别的文字最终要合并到 UI 树里，但 UI 树本身的构建不需要等文字识别完成。所以主线程先跑完 CCL → 矩形检测 → 几何分类 → 颜色提取，最后 `handle.join()` 收结果。
 
-**顶部/底栏移除是可选的，且阈值可配置。** 很多手机截图 App 都有状态栏和底部导航栏，这些对 UI 检测来说是噪声。`remove_bar` 通过 `config.top_bottom_bar` 参数控制，默认开启。
+**文本过滤的三层逻辑。** 长文本（>5 字符，宽度大于 2 倍高度）不受高度限制——因为一个标题可能字号很小但很长，按高度过滤会误杀。空内容删掉。单字符的标点符号删掉，但单字符的数字和中文保留。这个策略处理了 OCR 最常见的"把噪声当文字"问题。
 
-**孤儿文本自动合成容器。** 如果 OCR 识别出一段文字但周围没有对应的 UI 组件（比如手写笔记或文档截图），`synthesize_text` 会为它自动生成一个 Block 容器。这在处理非标准 UI 的图片时很有用。
+**孤儿文本的容器合成。** 如果你处理的是一张手写笔记的照片，OCR 识别出了文字段落，但没有 UI 组件包裹它们。`synthesize_text` 会为这些文本自动生成 Block 容器，让输出始终保持树状结构。
 
 ---
 
-## 为什么并行放在后台，主线程只跑规则
+## 输出：为什么不需要 `--format` 参数
 
-`main.rs` 里 OCR 和物体检测都 `thread::spawn` 到后台：
+大多数 CLI 工具会给你一堆格式选项：json、yaml、toml、compact、pretty。quasivision 的 CLI 只有一个输出格式——tree。代码里有一句话始终没变过：
 
-```rust
-let ocr_handle = if opts.enable_ocr {
-    let img_for_ocr = img.clone();
-    Some(thread::spawn(move || {
-        text_detection::detect_text(&img_for_ocr)
-    }))
-} else { None };
-
-let object_detect_handle = if opts.enable_object_detect {
-    let img_for_detect = img.clone();
-    Some(thread::spawn(move || {
-        object_detector::run_object_detection(...)
-    }))
-} else { None };
+```
+输出格式固定为 tree
 ```
 
-主线程跑完 CCL → 合并 → 过滤 → Block 识别 → 嵌套检测 → 几何分类 → 颜色图标，然后才 `handle.join()` 等待 OCR 和物体检测的结果。这一步的收益是——OCR 推理和 ONNX 物体检测完全不阻塞 UI 检测管线，总耗时等于 max(UI检测, OCR, 物体检测) 而非三者之和。
+但同时，`lib.rs` 暴露了 6 种序列化函数：`to_json_string`、`to_compact_string`（-50% tokens）、`to_ai_json_string`（坐标归一化 0-1000）、`to_tree_json_string`、`to_tree_text_string`、`to_text_summary`。
 
-这是在 Rust 里用标准库 `std::thread` 完成的，不需要 Tokio 这样的异步运行时。对于一次性扫描的工具来说，线程方案比 async 更直接——没有调度开销，join 就是等待。
+这意味着格式选择权不在 CLI 用户手里，而在库调用者手里。CLI 是给"一次性使用"的——跑完看结果。库是给"程序化使用"的——Python binding 可以按需调用不同的序列化格式。这种分层设计避开了 CLI 参数膨胀，同时保持了库的灵活性。
 
----
-
-## ONNX Runtime 做胶水，Cargo 做平台适配
-
-`Cargo.toml` 里依赖的 ONNX 绑定是 `ort = "2.0.0-rc.12"`，配合 `ndarray` 做矩阵数据。而 OCR 引擎用的是 `oar-ocr`，一个封装了 PaddleOCR 的 ONNX 推理库。平台适配通过 Cargo 的条件编译：
-
-```toml
-[target.'cfg(target_os = "windows")'.dependencies]
-oar-ocr = { version = "0.6", features = ["directml"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-oar-ocr = { version = "0.6", features = ["coreml"] }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-oar-ocr = "0.6"
-```
-
-Windows 用 DirectML，macOS 用 CoreML，Linux 走 CPU。全编译期自动选择，用户不需要关心 GPU 驱动版本更不用配 CUDA。
-
-模型文件也做了一层巧妙的降级——`download.rs` 里，缺失文件自动从 Hugging Face 下载。国内用户设个环境变量就能切到镜像：
-
-```rust
-fn get_base_url() -> String {
-    match std::env::var("QUASIVISION_MODELS_URL") {
-        Ok(url) if !url.is_empty() => { url.trim_end_matches('/').to_string() }
-        _ => "https://huggingface.co/...".to_string(),
-    }
-}
-```
-
-一个细节：`download_missing` 用了 `AtomicBool` 防并行下载，避免多个线程同时拉模型。对于 CLI 工具来说这算过度设计，但对于将来可能的库调用场景，这是正确的防御。
+附带一个被很多人忽略的输出字段：`prominence`。它是一个 0.0-1.0 的视觉重要性分数，基于面积、类别类型和颜色对比度计算。对于 Agent 场景，这个分数可以用来做"先关注哪个元素"的排序。比如视觉上最突出的 Button 先考虑。
 
 ---
 
-## 输出格式：固定 shape 而不是给一堆 flag
+## 适用的场景和清晰的边界
 
-quasivision 的输出只有一个格式——tree。同时产出 `elements.tree.json` 和 `elements.tree.txt`。没有 `--format json|yaml|compact|` 这种排列组合。
+最好的工具知道自己的边界在哪里。以下场景 quasivision 占优：
 
-但 `lib.rs` 里暴露了更多序列化函数：`to_compact_string`（短键名 -50% tokens）、`to_ai_json_string`（坐标归一化 0-1000）、`to_tree_text_string`（纯文本树）。这些都只在库层面暴露，CLI 只给 tree 格式。这种设计让库用户有灵活性（Python binding 可以选格式），同时 CLI 用户不会纠结。
+| 场景 | 为什么 |
+|---|---|
+| 截图转文字 | 本地 OCR，批量跑零成本 |
+| UI 结构提取 | 像素级坐标 + 确定性的组件分类 |
+| Agent 视觉感知层 | 把图片 token 换成文本 token，开一轮 Agent 循环 |
+| 100 张 PDF 批量 OCR | `cargo run -- -i ./docs/ --recursive` |
+| 物体列表提取 | YOLOE-26n 860 类物体，带父子层级和坐标 |
 
-输出中还包含一个 `compute_prominence` 函数计算的"视觉重要性"分数。基于面积、类别、颜色对比度，给每个元素打分 0.0~1.0。对自动化场景来说，这个分数可以帮助下游 Agent 决定"先点哪个"。
+以下场景 VLM 占优：
+
+| 场景 | 为什么 |
+|---|---|
+| 分析图表趋势 | 需要数值理解和推理 |
+| 理解设计风格 | 需要语义和审美判断 |
+| 描述照片内容 | 需要自然语言生成和上下文关联 |
+| 回答"这个界面有什么问题" | 需要综合判断 |
 
 ---
 
-## 这个架构对 AI Agent 意味着什么
+## 两层架构：感知与推理分离
 
-2026 年的 Agent 工具链里，视觉感知的方式基本被 VLM 垄断了。CUA（Computer-Using Agent）的典型流程是：截图 → 发给 GPT-4V → 获取意图 → 执行动作。这条路的问题不是效果不好，而是成本结构——每次决策都要一次 API 调用。
+从 AI Agent 架构的角度，quasivision 提出了一种分层方案——不再把所有负担堆给 VLM。
 
-quasivision 提供了一条补充路径：把视觉感知从"推理"降级为"提取"。截图先过确定性管线得到结构化描述（按钮在哪里、文字是什么），然后只把**文本描述**传给 LLM 做决策。LLM 不需要"看图"了，它只需要读一段结构化的 DOM 树。
+传统路线：截图 → VLM（既做感知又做推理）→ 动作。一张图承载了所有信息，VLM 一个人干了所有活。
 
-这相当于把视觉层的 token 消耗降到了零。Agent 循环变成：截图 → quasivision 本地解析 → 结构化文本 → LLM 决策 → 执行动作。每一轮只消耗一次文本 token，不消耗图像 token。
+分层路线：截图 → quasivision 本地解析（感知层）→ 结构化文本 → LLM 推理（决策层）→ 动作。
 
-当然这条路有明确的边界——quasivision 看不懂图表趋势、分不清情绪、不理解设计意图。但对于"找到页面上所有按钮"、"提取屏幕上的文字"、"列出截图中的物体"这类精确感知任务，确定性方案无论在速度、成本还是稳定性上都碾压式领先。
+感知层只做"看见"——把视觉信号转化为精确的结构化数据。决策层只做"思考"——在结构化数据上推理下一步该做什么。
+
+两层分离后，各自可以独立优化。感知层不需要变聪明，只要能更准确地提取信息。决策层不需要变"眼睛"，只需要更善于理解结构化上下文。**好的架构不是让一个组件干所有事，而是让每个组件只干自己最擅长的事。**
 
 ---
 
-## 一行命令上手
+## 一行命令
 
 ```bash
 git clone https://github.com/WeiChens/quasivision.git && cd quasivision
 cargo run -- --input demo/ui.jpg
 ```
 
-首次运行自动下载模型，国内用户加一行：
+首次运行自动下载模型（不到 20MB）。国内用户：
 
 ```bash
 set QUASIVISION_MODELS_URL=https://hf-mirror.com/WeiChens/quasivision-models/resolve/main
 ```
 
-v0.2.2，22 个 commit，全 Rust 实现。如果你在做桌面 Agent、浏览器自动化或 MCP Tool 开发，这个项目值得放进工具箱——不是因为它的功能多强，而是因为它的方案选得清醒。在所有人都在往上做更大模型的时候，选择往下做确定性感知，这本身就是一种稀缺的判断力。
+v0.2.2，MIT 许可，22 次提交。一个在 2026 年选择"往下走"的项目——不是因为技术能力不够，而是因为看懂了那条被所有人忽视的需求：**在 Agent 时代，精确的感知比模糊的理解更稀缺。**
