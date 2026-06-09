@@ -6,7 +6,7 @@ import seoGraph from "@jdevalk/astro-seo-graph/integration";
 import tailwindcssVite from "@tailwindcss/vite";
 
 export default defineConfig({
-  site: "https://neo-blog.pages.dev",
+  site: "https://skychat.eu.org",
   output: "static",
 
   // View Transitions：SPA 级页面切换动画
@@ -21,7 +21,7 @@ export default defineConfig({
     seoGraph({
       llmsTxt: {
         title: "Neo Blog",
-        siteUrl: "https://neo-blog.pages.dev",
+        siteUrl: "https://skychat.eu.org",
         summary:
           "AI 工具与实践博客，探索 AI 编程助手、Agent 自动化、知识管理、多模态应用、LLM 应用开发、GEO 实践方法",
       },
